@@ -109,15 +109,21 @@ class Chart {
             const startIs270MoreOr90Less = start <= Math.PI / 2 || start >= Math.PI * (3/2),
                 endIs270MoreOr90Less = end <= Math.PI / 2 || end >= Math.PI * (3/2),
                 isBigger180 = gapEndStart > Math.PI,
-                k1PerpendicularX = this.isEquivalentTo90(start) || this.isEquivalentTo270(start),
-                k2PerpendicularX = this.isEquivalentTo90(end) || this.isEquivalentTo270(end),
-                k1PerpendicularY = this.isEquivalentTo360(start) || this.isEquivalentTo180(start),
-                k2PerpendicularY = this.isEquivalentTo360(end) || this.isEquivalentTo180(end)
+                k1IsEquivalent90 = this.isEquivalentTo90(start),
+                k1IsEquivalent270 =  this.isEquivalentTo270(start),
+                k1IsEquivalent360 = this.isEquivalentTo360(start),
+                k1IsEquivalent180 = this.isEquivalentTo180(start),
+                k2IsEquivalent90 = this.isEquivalentTo90(end),
+                k2IsEquivalent270 =  this.isEquivalentTo270(end),
+                k2IsEquivalent360 = this.isEquivalentTo360(end),
+                k2IsEquivalent180 = this.isEquivalentTo180(end)
 
-            const k1 = k1PerpendicularY || k1PerpendicularX ? 0 : Math.tan(start),
-                b1 = k1PerpendicularY || k1PerpendicularX ? 0 : centerY - k1 * centerX,
-                k2 = k2PerpendicularY || k2PerpendicularX ? 0 : Math.tan(end),
-                b2 = k2PerpendicularY || k2PerpendicularX ? 0 : centerY - k2 *  centerX
+            const isK1Perpendicular = k1IsEquivalent90 || k1IsEquivalent180 || k1IsEquivalent270 || k1IsEquivalent360
+            const isK2Perpendicular = k2IsEquivalent90 || k2IsEquivalent180 || k2IsEquivalent270 || k2IsEquivalent360
+            const k1 = isK1Perpendicular ? 0 : Math.tan(start),
+                b1 = isK1Perpendicular ? 0 : centerY - k1 * centerX,
+                k2 = isK2Perpendicular ? 0 : Math.tan(end),
+                b2 =  isK2Perpendicular ? 0 : centerY - k2 *  centerX
 
             this.collusionArray.push({
                 k1,
@@ -129,10 +135,14 @@ class Chart {
                 isBigger180,
                 start,
                 end,
-                k2PerpendicularY,
-                k1PerpendicularY,
-                k2PerpendicularX,
-                k1PerpendicularX
+                k1IsEquivalent90,
+                k1IsEquivalent180,
+                k1IsEquivalent270,
+                k1IsEquivalent360,
+                k2IsEquivalent90,
+                k2IsEquivalent180,
+                k2IsEquivalent270,
+                k2IsEquivalent360
             })
 
             total += percent
@@ -176,17 +186,15 @@ class Chart {
             if (coll.endIs270MoreOr90Less) bottom = calculation2 < 0
             else bottom = calculation2 > 0
 
-            if (coll.k2PerpendicularY && this.isEquivalentTo360(coll.end)) bottom = e.pageY < this.getCanvasCenterYRelativelyDocument()
-            if (coll.k2PerpendicularY && this.isEquivalentTo180(coll.end)) bottom = e.pageY > this.getCanvasCenterYRelativelyDocument()
+            if (coll.k2IsEquivalent360) bottom = e.pageY < this.getCanvasCenterYRelativelyDocument()
+            else if (coll.k2IsEquivalent180) bottom = e.pageY > this.getCanvasCenterYRelativelyDocument()
+            else if (coll.k2IsEquivalent90) bottom = e.pageX > this.getCanvasCenterXRelativelyDocument()
+            else if (coll.k2IsEquivalent270) bottom = e.pageX < this.getCanvasCenterXRelativelyDocument()
 
-            if (coll.k2PerpendicularX && this.isEquivalentTo90(coll.end)) bottom = e.pageX > this.getCanvasCenterXRelativelyDocument()
-            if (coll.k2PerpendicularX && this.isEquivalentTo270(coll.end)) bottom = e.pageX < this.getCanvasCenterXRelativelyDocument()
-
-            if (coll.k1PerpendicularY && this.isEquivalentTo360(coll.start)) top = e.pageY > this.getCanvasCenterYRelativelyDocument()
-            if (coll.k1PerpendicularY && this.isEquivalentTo180(coll.start)) top = e.pageY < this.getCanvasCenterYRelativelyDocument()
-
-            if (coll.k1PerpendicularX && this.isEquivalentTo90(coll.start)) top = e.pageX < this.getCanvasCenterXRelativelyDocument()
-            if (coll.k1PerpendicularX && this.isEquivalentTo270(coll.start)) top = e.pageX > this.getCanvasCenterXRelativelyDocument()
+            if (coll.k1IsEquivalent360) top = e.pageY > this.getCanvasCenterYRelativelyDocument()
+            else if (coll.k1IsEquivalent180) top = e.pageY < this.getCanvasCenterYRelativelyDocument()
+            else if (coll.k1IsEquivalent90) top = e.pageX < this.getCanvasCenterXRelativelyDocument()
+            else if (coll.k1IsEquivalent270) top = e.pageX > this.getCanvasCenterXRelativelyDocument()
 
             if (top && bottom || (coll.isBigger180 && (top || bottom))) {
                 popup.style.display = "flex"
@@ -274,12 +282,12 @@ new Chart({
     parent: document.querySelector(".wrapper"),
     data: [
         {
-            percent: 20,
+            percent: 25,
             color: "#9255d9",
             name: "Fight club"
         },
         {
-            percent: 55,
+            percent: 25,
             color: "#49945a",
             name: "Revolver"
         },
