@@ -23,8 +23,8 @@ class Chart {
                     name,
                     emptySliceColor,
                     canvasColor,
-        sliceRadius,
-        emptySliceName
+                    sliceRadius,
+                    emptySliceName
                 }) {
         this.parent = parent
         this.canvas =  document.createElement("canvas")
@@ -97,7 +97,6 @@ class Chart {
         return Math.pow(this.centerRadius  / 2, 2) - Math.pow(x - this.centerX / 2 - this.gapX, 2) - Math.pow(y - this.centerY / 2 - this.gapY , 2) > 0
             || Math.pow(this.sliceRadius / 2, 2) - Math.pow(x - this.centerX / 2 - this.gapX , 2) - Math.pow(y - this.centerY / 2 - this.gapY, 2) < 0
     }
-
     getStrokeFunctions() {
         let total = 0
         this.data.forEach(({percent}, i)=> {
@@ -107,37 +106,24 @@ class Chart {
             const centerY = this.centerY / 2 + this.gapY
             const gapEndStart = end - start
 
-            let startIs270MoreOr90Less = false,
-                endIs270MoreOr90Less = false,
-                isBigger180 = false
+            const startIs270MoreOr90Less = start <= Math.PI / 2 || start >= Math.PI * (3/2),
+                endIs270MoreOr90Less = end <= Math.PI / 2 || end >= Math.PI * (3/2),
+                isBigger180 = gapEndStart > Math.PI,
+                k1PerpendicularX = this.isEquivalentTo90(start) || this.isEquivalentTo270(start),
+                k2PerpendicularX = this.isEquivalentTo90(end) || this.isEquivalentTo270(end),
+                k1PerpendicularY = this.isEquivalentTo360(start) || this.isEquivalentTo180(start),
+                k2PerpendicularY = this.isEquivalentTo360(end) || this.isEquivalentTo180(end)
 
-            if (start <= Math.PI / 2 || start >= Math.PI * (3/2)) startIs270MoreOr90Less = true
-            if (end <= Math.PI / 2 || end >= Math.PI * (3/2)) endIs270MoreOr90Less = true
-            if (gapEndStart > Math.PI) isBigger180 = true
-
-            let k1 = Math.tan(start),
-                b1 = centerY - k1 * centerX,
-                k2 = Math.tan(end),
-                b2 = centerY - k2 *  centerX
-
-            let k2PerpendicularX = false
-            if (end.toFixed(5) === (Math.PI / 2).toFixed(5) || end.toFixed(5) === (Math.PI * (3/2)).toFixed(5)) k2PerpendicularX = true
-
-            let k1PerpendicularX = false
-            if (start.toFixed(5) === (Math.PI / 2).toFixed(5) || start.toFixed(5) === (Math.PI * (3/2)).toFixed(5)) k1PerpendicularX = true
-
-            let k2PerpendicularY = false
-            if (end.toFixed(5) === Math.PI.toFixed(5) || end === 0 || end.toFixed(5) === (Math.PI * 2).toFixed(5)) k2PerpendicularY = true
-
-            let k1PerpendicularY = false
-            if (start.toFixed(5) === Math.PI.toFixed(5) || start === 0 || start.toFixed(5) === (Math.PI * 2).toFixed(5)) k1PerpendicularY = true
-
+            const k1 = k1PerpendicularY || k1PerpendicularX ? 0 : Math.tan(start),
+                b1 = k1PerpendicularY || k1PerpendicularX ? 0 : centerY - k1 * centerX,
+                k2 = k2PerpendicularY || k2PerpendicularX ? 0 : Math.tan(end),
+                b2 = k2PerpendicularY || k2PerpendicularX ? 0 : centerY - k2 *  centerX
 
             this.collusionArray.push({
-                k1: k1PerpendicularY || k1PerpendicularX ? 0 : k1,
-                b1: k1PerpendicularY || k1PerpendicularX ? 0 : b1,
-                k2: k2PerpendicularY || k2PerpendicularX ? 0 : k2,
-                b2: k2PerpendicularY || k2PerpendicularX ? 0 : b2,
+                k1,
+                b1,
+                k2,
+                b2,
                 startIs270MoreOr90Less,
                 endIs270MoreOr90Less,
                 isBigger180,
@@ -173,6 +159,10 @@ class Chart {
 
     mousemoveHandler(e) {
         const popup = document.querySelector(".popup")
+        if (this.checkInOrOutClick(e.pageX, e.pageY)) {
+            popup.style.display = "none"
+            return
+        }
         for (let i = 0; i < this.data.length; i++) {
             let top, bottom
             const coll = this.collusionArray[i]
@@ -186,27 +176,23 @@ class Chart {
             if (coll.endIs270MoreOr90Less) bottom = calculation2 < 0
             else bottom = calculation2 > 0
 
+            if (coll.k2PerpendicularY && this.isEquivalentTo360(coll.end)) bottom = e.pageY < this.getCanvasCenterYRelativelyDocument()
+            if (coll.k2PerpendicularY && this.isEquivalentTo180(coll.end)) bottom = e.pageY > this.getCanvasCenterYRelativelyDocument()
 
-            if (coll.k2PerpendicularY && coll.end.toFixed(5) === (Math.PI * 2).toFixed(5)) bottom = e.pageY < this.centerY / 2 + this.canvas.offsetTop
-            if (coll.k2PerpendicularY && coll.end.toFixed(5) === Math.PI.toFixed(5)) bottom = e.pageY > this.centerY / 2 + this.canvas.offsetTop
+            if (coll.k2PerpendicularX && this.isEquivalentTo90(coll.end)) bottom = e.pageX > this.getCanvasCenterXRelativelyDocument()
+            if (coll.k2PerpendicularX && this.isEquivalentTo270(coll.end)) bottom = e.pageX < this.getCanvasCenterXRelativelyDocument()
 
-            if (coll.k2PerpendicularX && coll.end.toFixed(5) === (Math.PI / 2).toFixed(5)) bottom = e.pageX > this.centerX / 2 + this.canvas.offsetLeft
-            if (coll.k2PerpendicularX && coll.end.toFixed(5) === (Math.PI * (3/2)).toFixed(5)) bottom = e.pageX < this.centerX / 2 + this.canvas.offsetLeft
+            if (coll.k1PerpendicularY && this.isEquivalentTo360(coll.start)) top = e.pageY > this.getCanvasCenterYRelativelyDocument()
+            if (coll.k1PerpendicularY && this.isEquivalentTo180(coll.start)) top = e.pageY < this.getCanvasCenterYRelativelyDocument()
 
-            if (coll.k1PerpendicularY && coll.start.toFixed(5) === (Math.PI * 2).toFixed(5)) top = e.pageY > this.centerY / 2 + this.canvas.offsetTop
-            if (coll.k1PerpendicularY && coll.start.toFixed(5) === Math.PI.toFixed(5)) top = e.pageY < this.centerY / 2 + this.canvas.offsetTop
-
-            if (coll.k1PerpendicularX && coll.start.toFixed(5) === (Math.PI / 2).toFixed(5)) top = e.pageX < this.centerX / 2 + this.canvas.offsetLeft
-            if (coll.k1PerpendicularX && coll.start.toFixed(5) === (Math.PI * (3/2)).toFixed(5)) top = e.pageX > this.centerX / 2 + this.canvas.offsetLeft
-
+            if (coll.k1PerpendicularX && this.isEquivalentTo90(coll.start)) top = e.pageX < this.getCanvasCenterXRelativelyDocument()
+            if (coll.k1PerpendicularX && this.isEquivalentTo270(coll.start)) top = e.pageX > this.getCanvasCenterXRelativelyDocument()
 
             if (top && bottom || (coll.isBigger180 && (top || bottom))) {
                 popup.style.display = "flex"
                 popup.style.transform = `translate(${e.pageX}px, ${e.pageY}px)`
                 popup.textContent = slice.name + " " + slice.percent + "%"
             }
-
-            if (this.checkInOrOutClick(e.pageX, e.pageY)) popup.style.display = "none"
         }
     }
 
@@ -261,18 +247,39 @@ class Chart {
         this.ctx.fillText(this.name, this.centerX, this.centerY)
         this.ctx.closePath()
     }
+
+    isEquivalentTo360(degrees) {
+        return degrees.toFixed(5) === (Math.PI * 2).toFixed(5)
+    }
+    isEquivalentTo270(degrees) {
+        return degrees.toFixed(5) === (Math.PI * (3/2)).toFixed(5)
+    }
+    isEquivalentTo180(degrees) {
+        return degrees.toFixed(5) === Math.PI.toFixed(5)
+    }
+
+    isEquivalentTo90(degrees) {
+        return degrees.toFixed(5) === (Math.PI / 2).toFixed(5)
+    }
+
+    getCanvasCenterYRelativelyDocument() {
+        return this.centerY / 2 + this.canvas.offsetTop
+    }
+    getCanvasCenterXRelativelyDocument() {
+        return this.centerX / 2 + this.canvas.offsetLeft
+    }
 }
 
 new Chart({
     parent: document.querySelector(".wrapper"),
     data: [
         {
-            percent: 25,
+            percent: 20,
             color: "#9255d9",
             name: "Fight club"
         },
         {
-            percent: 25,
+            percent: 55,
             color: "#49945a",
             name: "Revolver"
         },
